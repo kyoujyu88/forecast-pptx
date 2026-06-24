@@ -4,6 +4,25 @@
 
 ---
 
+## [2.0.0] - 2026-06-24
+
+### Changed (破壊的変更)
+- **Python バックエンド廃止 → 純フロントエンド化（GitHub Pages 対応）**
+  - `main.py`, `weather.py`, `pptx_generator.py`, `requirements.txt` を削除
+  - `static/` ディレクトリ廃止、`index.html` / `style.css` / `app.js` をルートに移動
+- **PPTX 生成**: python-pptx（サーバーサイド）→ [PptxGenJS 3.12.0](https://gitbrent.github.io/PptxGenJS/)（ブラウザ内生成）
+- **天気予報取得**: FastAPI 経由 → ブラウザから Open-Meteo API を直接 fetch（CORS 対応）
+- `app.js` を全面書き直し（API 呼び出し・PptxGenJS によるスライド構築）
+- `index.html` を PptxGenJS CDN 読み込みに更新
+- `README.md` を GitHub Pages デプロイ手順に更新
+- `.gitignore` を簡略化（Python 関連エントリ削除）
+
+### 動作環境
+- サーバー不要。モダンブラウザのみ
+- PptxGenJS 3.12.0（CDN）
+
+---
+
 ## [1.1.0] - 2026-06-24
 
 ### Added
