@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>天気予報 PPTX 生成</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
@@ -32,18 +32,10 @@
     <section class="section">
       <h2>予報日数</h2>
       <div class="days-row">
-        <label>
-          <input type="radio" name="days" value="7"> 7日
-        </label>
-        <label>
-          <input type="radio" name="days" value="10"> 10日
-        </label>
-        <label>
-          <input type="radio" name="days" value="14" checked> 14日（デフォルト）
-        </label>
-        <label>
-          <input type="radio" name="days" value="16"> 16日
-        </label>
+        <label><input type="radio" name="days" value="7"> 7日</label>
+        <label><input type="radio" name="days" value="10"> 10日</label>
+        <label><input type="radio" name="days" value="14" checked> 14日（デフォルト）</label>
+        <label><input type="radio" name="days" value="16"> 16日</label>
       </div>
     </section>
 
@@ -57,6 +49,7 @@
     </footer>
   </div>
 
-  <script src="/static/app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
