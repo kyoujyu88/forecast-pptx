@@ -10,7 +10,7 @@
   <div class="container">
     <header>
       <h1>天気予報 PPTX 生成</h1>
-      <p class="subtitle">地点と日数を設定して、天気予報入りの PowerPoint を生成します。</p>
+      <p class="subtitle">地点と期間を設定して、天気予報入りの PowerPoint を生成します。</p>
     </header>
 
     <section class="section">
@@ -30,13 +30,20 @@
     </section>
 
     <section class="section">
-      <h2>予報日数</h2>
-      <div class="days-row">
-        <label><input type="radio" name="days" value="7"> 7日</label>
-        <label><input type="radio" name="days" value="10"> 10日</label>
-        <label><input type="radio" name="days" value="14" checked> 14日（デフォルト）</label>
-        <label><input type="radio" name="days" value="16"> 16日</label>
+      <h2>予報期間</h2>
+      <div class="date-range-row">
+        <div class="date-input-group">
+          <label for="start-date">開始日</label>
+          <input type="date" id="start-date">
+        </div>
+        <span class="date-sep">〜</span>
+        <div class="date-input-group">
+          <label for="end-date">終了日</label>
+          <input type="date" id="end-date">
+        </div>
+        <span id="days-badge" class="days-badge">14日間</span>
       </div>
+      <div id="date-error" class="date-error" style="display:none"></div>
     </section>
 
     <section class="section generate-section">

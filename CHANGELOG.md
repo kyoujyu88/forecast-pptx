@@ -4,6 +4,29 @@
 
 ---
 
+## [2.1.0] - 2026-06-24
+
+### Added
+- **SVG 天気アイコン** (`icons/` ディレクトリ): 11 種の SVG ファイルを追加
+  - `sunny`, `partly-cloudy`, `cloudy`, `fog`, `drizzle`, `rain`, `snow`,
+    `showers`, `snow-showers`, `thunderstorm`, `unknown`
+  - PptxGenJS の `addImage()` で base64 データ URL として埋め込み
+
+### Changed
+- **予報期間の指定方法**: 「7/10/14/16 日」ラジオボタン → **開始日・終了日の日付ピッカー**（最大 16 日）
+  - Open-Meteo API の `forecast_days` パラメータを `start_date`/`end_date` に変更
+  - localStorage に `forecast_pptx_start` / `forecast_pptx_end` として保存
+  - 日付バリデーション: 終了日 < 開始日 / 16 日超過時にエラー表示
+- **PPTX セルレイアウト刷新**: 絵文字テキスト → **大型アイコン + 色付きテキスト**
+  - セル上部 55%: SVG アイコンを中央配置
+  - 降水確率: 青色 (`1A56DB`)
+  - 最高/最低気温: 赤 (`CC2200`) / 青 (`0055CC`) の混色テキスト run
+- `style.css`: 日付ピッカー UI 用スタイル追加（`.date-range-row`, `.date-input-group`,
+  `.date-sep`, `.days-badge`, `.date-error`）
+- `README.md`: v2.1.0 の機能・ファイル構成を反映
+
+---
+
 ## [2.0.0] - 2026-06-24
 
 ### Changed (破壊的変更)

@@ -1,45 +1,43 @@
 'use strict';
 
-const STORAGE_KEY_LOCS = 'forecast_pptx_locations';
-const STORAGE_KEY_DAYS = 'forecast_pptx_days';
+const STORAGE_KEY_LOCS  = 'forecast_pptx_locations';
+const STORAGE_KEY_START = 'forecast_pptx_start';
+const STORAGE_KEY_END   = 'forecast_pptx_end';
 const MAX_LOCATIONS = 5;
+const MAX_DAYS      = 16;
 
-// WMO weather code → [emoji, Japanese name]
-const WMO_MAP = {
-  0:  ['☀',  '快晴'],
-  1:  ['🌤', '晴れ'],
-  2:  ['⛅', '晴れ時々曇り'],
-  3:  ['☁',  '曇り'],
-  45: ['🌫', '霧'],
-  48: ['🌫', '霧(着氷)'],
-  51: ['🌦', '霧雨(弱)'],
-  53: ['🌦', '霧雨'],
-  55: ['🌦', '霧雨(強)'],
-  56: ['🌧', '凍雨(弱)'],
-  57: ['🌧', '凍雨'],
-  61: ['🌧', '雨(弱)'],
-  63: ['🌧', '雨'],
-  65: ['🌧', '雨(強)'],
-  66: ['🌧', '凍雨(弱)'],
-  67: ['🌧', '凍雨(強)'],
-  71: ['❄',  '雪(弱)'],
-  73: ['❄',  '雪'],
-  75: ['❄',  '雪(強)'],
-  77: ['❄',  '霧雪'],
-  80: ['🌦', 'にわか雨(弱)'],
-  81: ['🌦', 'にわか雨'],
-  82: ['🌦', 'にわか雨(強)'],
-  85: ['🌨', 'にわか雪(弱)'],
-  86: ['🌨', 'にわか雪(強)'],
-  95: ['⛈',  '雷雨'],
-  96: ['⛈',  '雷雨(雹)'],
-  99: ['⛈',  '激しい雷雨'],
+// WMO code → icon key
+const WMO_ICON = {
+  0: 'sunny', 1: 'sunny',
+  2: 'partly-cloudy',
+  3: 'cloudy',
+  45: 'fog', 48: 'fog',
+  51: 'drizzle', 53: 'drizzle', 55: 'drizzle',
+  56: 'drizzle', 57: 'drizzle',
+  61: 'rain', 63: 'rain', 65: 'rain',
+  66: 'rain', 67: 'rain',
+  71: 'snow', 73: 'snow', 75: 'snow', 77: 'snow',
+  80: 'showers', 81: 'showers', 82: 'showers',
+  85: 'snow-showers', 86: 'snow-showers',
+  95: 'thunderstorm', 96: 'thunderstorm', 99: 'thunderstorm',
+};
+
+// WMO code → Japanese name (for alt text / fallback)
+const WMO_NAME = {
+  0:'快晴', 1:'晴れ', 2:'晴れ時々曇り', 3:'曇り',
+  45:'霧', 48:'霧(着氷)',
+  51:'霧雨(弱)', 53:'霧雨', 55:'霧雨(強)', 56:'凍雨(弱)', 57:'凍雨',
+  61:'雨(弱)', 63:'雨', 65:'雨(強)', 66:'凍雨(弱)', 67:'凍雨(強)',
+  71:'雪(弱)', 73:'雪', 75:'雪(強)', 77:'霧雪',
+  80:'にわか雨(弱)', 81:'にわか雨', 82:'にわか雨(強)',
+  85:'にわか雪(弱)', 86:'にわか雪(強)',
+  95:'雷雨', 96:'雷雨(雹)', 99:'激しい雷雨',
 };
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
-function getWeather(code) {
-  return WMO_MAP[code] ?? ['❓', '不明'];
+function getIconKey(code) {
+  return (code != null && WMO_ICON[code]) ? WMO_ICON[code] : 'unknown';
 }
 
 function formatDate(dateStr) {
@@ -47,17 +45,33 @@ function formatDate(dateStr) {
   return `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAYS[d.getDay()]})`;
 }
 
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function addDays(isoStr, n) {
+  const d = new Date(isoStr + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function diffDays(start, end) {
+  return Math.round((new Date(end + 'T00:00:00') - new Date(start + 'T00:00:00')) / 86400000) + 1;
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────
 
 const state = {
-  locations: [],  // [{name, lat, lon}, ...]
-  days: 14,
+  locations:  [],
+  startDate:  todayISO(),
+  endDate:    addDays(todayISO(), 13),
 };
 
 function saveState() {
   try {
-    localStorage.setItem(STORAGE_KEY_LOCS, JSON.stringify(state.locations));
-    localStorage.setItem(STORAGE_KEY_DAYS, String(state.days));
+    localStorage.setItem(STORAGE_KEY_LOCS,  JSON.stringify(state.locations));
+    localStorage.setItem(STORAGE_KEY_START, state.startDate);
+    localStorage.setItem(STORAGE_KEY_END,   state.endDate);
   } catch (_) {}
 }
 
@@ -65,13 +79,22 @@ function loadState() {
   try {
     const locs = localStorage.getItem(STORAGE_KEY_LOCS);
     state.locations = locs ? JSON.parse(locs) : [];
-  } catch (_) {
-    state.locations = [];
-  }
-  const days = localStorage.getItem(STORAGE_KEY_DAYS);
-  if (days && ['7', '10', '14', '16'].includes(days)) {
-    state.days = parseInt(days, 10);
-  }
+  } catch (_) { state.locations = []; }
+
+  const today  = todayISO();
+  const maxDay = addDays(today, MAX_DAYS - 1);
+
+  let start = localStorage.getItem(STORAGE_KEY_START) || today;
+  let end   = localStorage.getItem(STORAGE_KEY_END)   || addDays(today, 13);
+
+  // Clamp to valid range
+  if (start < today)  start = today;
+  if (start > maxDay) start = today;
+  if (end   < start)  end   = addDays(start, Math.min(13, MAX_DAYS - 1));
+  if (end   > maxDay) end   = maxDay;
+
+  state.startDate = start;
+  state.endDate   = end;
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
@@ -92,10 +115,39 @@ function renderLocationList() {
     state.locations.length >= MAX_LOCATIONS;
 }
 
-function syncDaysRadio() {
-  document.querySelectorAll('input[name="days"]').forEach(r => {
-    r.checked = parseInt(r.value, 10) === state.days;
-  });
+function initDatePickers() {
+  const today  = todayISO();
+  const maxDay = addDays(today, MAX_DAYS - 1);
+
+  const startEl = document.getElementById('start-date');
+  const endEl   = document.getElementById('end-date');
+
+  startEl.min = today;
+  startEl.max = maxDay;
+  endEl.min   = today;
+  endEl.max   = maxDay;
+
+  startEl.value = state.startDate;
+  endEl.value   = state.endDate;
+
+  updateDaysBadge();
+}
+
+function updateDaysBadge() {
+  const n   = diffDays(state.startDate, state.endDate);
+  const el  = document.getElementById('days-badge');
+  const err = document.getElementById('date-error');
+  if (n < 1 || n > MAX_DAYS) {
+    el.style.display = 'none';
+    err.textContent  = n < 1
+      ? '終了日は開始日以降を選んでください'
+      : `予報期間は最大 ${MAX_DAYS} 日までです`;
+    err.style.display = 'block';
+  } else {
+    el.textContent    = `${n}日間`;
+    el.style.display  = 'inline-block';
+    err.style.display = 'none';
+  }
 }
 
 // ── Open-Meteo API ────────────────────────────────────────────────────────────
@@ -106,25 +158,43 @@ async function geocode(name) {
   if (!resp.ok) throw new Error('ジオコーディングに失敗しました');
   const data = await resp.json();
   return (data.results || []).map(r => ({
-    name: r.name,
-    lat: r.latitude,
-    lon: r.longitude,
-    country: r.country || '',
-    admin1:  r.admin1  || '',
+    name: r.name, lat: r.latitude, lon: r.longitude,
+    country: r.country || '', admin1: r.admin1 || '',
   }));
 }
 
-async function fetchForecast(lat, lon, days) {
+async function fetchForecast(lat, lon, startDate, endDate) {
   const params = new URLSearchParams({
-    latitude:  lat,
-    longitude: lon,
+    latitude:  lat, longitude: lon,
     daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',
     timezone: 'Asia/Tokyo',
-    forecast_days: days,
+    start_date: startDate,
+    end_date:   endDate,
   });
   const resp = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
   if (!resp.ok) throw new Error('予報データの取得に失敗しました');
   return (await resp.json()).daily;
+}
+
+// ── Icon loading ──────────────────────────────────────────────────────────────
+
+const ICON_KEYS = [
+  'sunny', 'partly-cloudy', 'cloudy', 'fog',
+  'drizzle', 'rain', 'snow', 'showers', 'snow-showers',
+  'thunderstorm', 'unknown',
+];
+
+async function loadIcons() {
+  const map = {};
+  await Promise.all(ICON_KEYS.map(async key => {
+    try {
+      const resp = await fetch(`icons/${key}.svg`);
+      if (!resp.ok) return;
+      const svg = await resp.text();
+      map[key] = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+    } catch (_) {}
+  }));
+  return map;
 }
 
 // ── Search ────────────────────────────────────────────────────────────────────
@@ -138,9 +208,7 @@ async function searchLocation() {
     const results = await geocode(query);
     showDropdown(results);
     clearStatus();
-  } catch (e) {
-    setStatus(e.message, 'error');
-  }
+  } catch (e) { setStatus(e.message, 'error'); }
 }
 
 function showDropdown(results) {
@@ -181,24 +249,31 @@ function confirmLocation(r) {
   clearStatus();
 }
 
-// ── PPTX Generation (PptxGenJS) ───────────────────────────────────────────────
+// ── PPTX Generation ───────────────────────────────────────────────────────────
 
 async function generatePPTX() {
   if (state.locations.length === 0) {
-    setStatus('地点を1件以上追加してください', 'error');
-    return;
+    setStatus('地点を1件以上追加してください', 'error'); return;
   }
+  const days = diffDays(state.startDate, state.endDate);
+  if (days < 1 || days > MAX_DAYS) {
+    setStatus(`予報期間は1〜${MAX_DAYS}日の範囲で指定してください`, 'error'); return;
+  }
+
   const btn = document.getElementById('generate-btn');
   btn.disabled = true;
   btn.textContent = '生成中…';
   setStatus('予報データを取得しています…', 'info');
 
   try {
-    const allForecasts = await Promise.all(
-      state.locations.map(loc => fetchForecast(loc.lat, loc.lon, state.days))
-    );
+    const [allForecasts, iconMap] = await Promise.all([
+      Promise.all(state.locations.map(loc =>
+        fetchForecast(loc.lat, loc.lon, state.startDate, state.endDate)
+      )),
+      loadIcons(),
+    ]);
     setStatus('スライドを生成しています…', 'info');
-    await buildPptx(state.locations, allForecasts, state.days);
+    await buildPptx(state.locations, allForecasts, iconMap);
     setStatus('ダウンロードを開始しました', 'success');
   } catch (e) {
     setStatus(e.message, 'error');
@@ -208,109 +283,133 @@ async function generatePPTX() {
   }
 }
 
-async function buildPptx(locations, allForecasts, days) {
+async function buildPptx(locations, allForecasts, iconMap) {
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_WIDE';  // 13.33" × 7.5"
 
-  const MARGIN     = 0.2;
-  const SLIDE_W    = 13.33;
-  const SLIDE_H    = 7.5;
-  const CONTENT_W  = SLIDE_W - MARGIN * 2;   // 12.93"
-  const LOC_COL_W  = 1.1;
+  const MARGIN    = 0.2;
+  const CONTENT_W = 12.93;
+  const LOC_W     = 1.1;
+  const TABLE_TOP = 2.55;
+  const TABLE_H   = 4.6;
+  const HDR_H     = 0.28;
 
-  // Clamp to actual returned days
   const times      = allForecasts[0]?.time ?? [];
-  const actualDays = Math.min(days, times.length);
-  const dateColW   = +((CONTENT_W - LOC_COL_W) / actualDays).toFixed(3);
+  const actualDays = times.length;
+  const dateColW   = +((CONTENT_W - LOC_W) / actualDays).toFixed(4);
+  const dataRowH   = +((TABLE_H - HDR_H) / locations.length).toFixed(4);
 
   const slide = pptx.addSlide();
 
-  // ── Schedule box (top 1/3) ───────────────────────────────────────────────
-  const SCHED_H = 2.1;
+  // ── Schedule box ────────────────────────────────────────────────────────────
   slide.addText('予定欄', {
-    x: MARGIN, y: MARGIN,
-    w: CONTENT_W, h: SCHED_H,
-    align: 'left', valign: 'top',
+    x: MARGIN, y: MARGIN, w: CONTENT_W, h: 2.1,
+    align: 'left', valign: 'top', inset: 0.08,
     fontSize: 9, color: 'BBBBBB',
-    inset: 0.08,
-    line:  { color: 'BBBBBB', pt: 0.75 },
-    fill:  { color: 'FFFFFF', transparency: 100 },
+    line: { color: 'BBBBBB', pt: 0.75 },
+    fill: { color: 'FFFFFF', transparency: 100 },
   });
 
-  // ── Weather table (bottom 2/3) ────────────────────────────────────────────
-  const TABLE_TOP = MARGIN + SCHED_H + 0.15;
-  const TABLE_H   = SLIDE_H - TABLE_TOP - 0.35;
-  const HDR_ROW_H = 0.28;
-  const dataRowH  = +((TABLE_H - HDR_ROW_H) / locations.length).toFixed(3);
+  // ── Grid header row ─────────────────────────────────────────────────────────
+  // [0,0] corner
+  drawTextCell(slide,
+    { x: MARGIN, y: TABLE_TOP, w: LOC_W, h: HDR_H },
+    '地点', 'D9D9D9', { bold: true, fontSize: 8 });
 
-  const colW = [LOC_COL_W, ...Array(actualDays).fill(dateColW)];
-  const rowH = [HDR_ROW_H, ...Array(locations.length).fill(dataRowH)];
+  // Date columns
+  times.forEach((d, j) => {
+    drawTextCell(slide,
+      { x: MARGIN + LOC_W + j * dateColW, y: TABLE_TOP, w: dateColW, h: HDR_H },
+      formatDate(d), 'BDD7EE', { bold: true, fontSize: 8 });
+  });
 
-  // Header row
-  const headerRow = [
-    cell('地点', { fill: 'D9D9D9', bold: true, fontSize: 8 }),
-    ...times.slice(0, actualDays).map(d =>
-      cell(formatDate(d), { fill: 'BDD7EE', bold: true, fontSize: 8 })
-    ),
-  ];
+  // ── Data rows ───────────────────────────────────────────────────────────────
+  locations.forEach((loc, i) => {
+    const rowY = TABLE_TOP + HDR_H + i * dataRowH;
 
-  // Data rows
-  const dataRows = locations.map((loc, i) => {
+    // Location name cell
+    drawTextCell(slide,
+      { x: MARGIN, y: rowY, w: LOC_W, h: dataRowH },
+      loc.name.length > 8 ? loc.name.slice(0, 8) : loc.name,
+      'FFE5CC', { bold: true, fontSize: 8 });
+
+    // Weather cells
     const daily = allForecasts[i];
-    return [
-      cell(loc.name.length > 8 ? loc.name.slice(0, 8) : loc.name,
-           { fill: 'FFE5CC', bold: true, fontSize: 8 }),
-      ...Array.from({ length: actualDays }, (_, j) => weatherCell(daily, j)),
-    ];
+    times.forEach((_, j) => {
+      drawWeatherCell(slide,
+        { x: MARGIN + LOC_W + j * dateColW, y: rowY, w: dateColW, h: dataRowH },
+        daily, j, iconMap);
+    });
   });
 
-  slide.addTable([headerRow, ...dataRows], {
-    x: MARGIN, y: TABLE_TOP,
-    colW, rowH,
-    border: { type: 'solid', color: 'C0C0C0', pt: 0.5 },
-  });
-
-  // ── Credit ────────────────────────────────────────────────────────────────
+  // ── Credit ──────────────────────────────────────────────────────────────────
   slide.addText('出典: Open-Meteo (CC BY 4.0)', {
-    x: MARGIN, y: SLIDE_H - 0.3,
-    w: CONTENT_W, h: 0.25,
+    x: MARGIN, y: 7.2, w: CONTENT_W, h: 0.25,
     align: 'right', fontSize: 7, color: '999999',
   });
 
   await pptx.writeFile({ fileName: `forecast_${todayStr()}.pptx` });
 }
 
-function cell(text, { fill, bold = false, fontSize = 7 } = {}) {
-  return {
-    text,
-    options: {
-      fill: { color: fill },
-      bold, fontSize,
-      align: 'center', valign: 'middle',
-      color: '333333',
-    },
-  };
+function drawTextCell(slide, { x, y, w, h }, text, fillHex, textOpts = {}) {
+  slide.addShape('rect', {
+    x, y, w, h,
+    fill: { color: fillHex },
+    line: { color: 'C0C0C0', pt: 0.5 },
+  });
+  slide.addText(text, {
+    x: x + 0.02, y, w: w - 0.04, h,
+    align: 'center', valign: 'middle',
+    color: '333333', fontSize: 8,
+    ...textOpts,
+  });
 }
 
-function weatherCell(daily, j) {
+function drawWeatherCell(slide, { x, y, w, h }, daily, j, iconMap) {
   const code   = daily?.weather_code?.[j];
   const precip = daily?.precipitation_probability_max?.[j];
   const tmax   = daily?.temperature_2m_max?.[j];
   const tmin   = daily?.temperature_2m_min?.[j];
 
-  const [emoji, wname] = getWeather(code);
-  const precipStr = precip != null ? `降水 ${precip}%` : '降水 -';
-  const tmaxStr   = tmax  != null ? `${Math.round(tmax)}°`  : '--';
-  const tminStr   = tmin  != null ? `${Math.round(tmin)}°`  : '--';
+  // Background
+  slide.addShape('rect', {
+    x, y, w, h,
+    fill: { color: 'FFFFFF' },
+    line: { color: 'C0C0C0', pt: 0.5 },
+  });
 
-  return {
-    text: [
-      { text: `${emoji} ${wname}`, options: { breakLine: true } },
-      { text: precipStr,           options: { breakLine: true } },
-      { text: `${tmaxStr}/${tminStr}` },
+  // Icon (top ~50% of cell, centered)
+  const iconSize = +Math.min(w * 0.62, h * 0.50).toFixed(3);
+  const iconX    = +(x + (w - iconSize) / 2).toFixed(3);
+  const iconY    = +(y + h * 0.03).toFixed(3);
+  const iconKey  = getIconKey(code);
+  const iconData = iconMap[iconKey] || iconMap['unknown'];
+
+  if (iconData) {
+    slide.addImage({ data: iconData, x: iconX, y: iconY, w: iconSize, h: iconSize });
+  }
+
+  // Precipitation (below icon)
+  const precipStr = precip != null ? `降水 ${precip}%` : '降水 -';
+  slide.addText(precipStr, {
+    x: x + 0.02, y: y + h * 0.55, w: w - 0.04, h: h * 0.22,
+    align: 'center', valign: 'middle',
+    fontSize: 6.5, color: '1A56DB',
+  });
+
+  // Temperature (max in red / min in blue)
+  const tmaxStr = tmax != null ? `${Math.round(tmax)}°` : '--';
+  const tminStr = tmin != null ? `${Math.round(tmin)}°` : '--';
+  slide.addText(
+    [
+      { text: tmaxStr + '/', options: { color: 'CC2200', bold: true } },
+      { text: tminStr,       options: { color: '0055CC', bold: true } },
     ],
-    options: { fontSize: 7, align: 'center', valign: 'middle', color: '333333' },
-  };
+    {
+      x: x + 0.02, y: y + h * 0.77, w: w - 0.04, h: h * 0.22,
+      align: 'center', valign: 'middle', fontSize: 8,
+    }
+  );
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -318,18 +417,15 @@ function weatherCell(daily, j) {
 function setStatus(msg, type) {
   const el = document.getElementById('status-msg');
   el.textContent = msg;
-  el.className = `status-msg ${type}`;
+  el.className   = `status-msg ${type}`;
   el.style.display = 'block';
 }
-
 function clearStatus() {
   document.getElementById('status-msg').style.display = 'none';
 }
-
 function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
-
 function todayStr() {
   return new Date().toISOString().slice(0, 10).replace(/-/g, '');
 }
@@ -339,13 +435,15 @@ function todayStr() {
 document.addEventListener('DOMContentLoaded', () => {
   loadState();
   renderLocationList();
-  syncDaysRadio();
+  initDatePickers();
 
+  // Search
   document.getElementById('search-btn').addEventListener('click', searchLocation);
   document.getElementById('search-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') searchLocation();
   });
 
+  // Remove location chips
   document.getElementById('location-list').addEventListener('click', e => {
     if (e.target.classList.contains('remove-btn')) {
       const i = parseInt(e.target.dataset.index, 10);
@@ -355,21 +453,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Clear search
   document.getElementById('add-location-btn').addEventListener('click', () => {
     document.getElementById('search-input').value = '';
     hideDropdown();
     document.getElementById('search-input').focus();
   });
 
-  document.querySelectorAll('input[name="days"]').forEach(r => {
-    r.addEventListener('change', () => {
-      state.days = parseInt(r.value, 10);
-      saveState();
-    });
+  // Date range
+  document.getElementById('start-date').addEventListener('change', e => {
+    state.startDate = e.target.value;
+    // Ensure end >= start
+    if (state.endDate < state.startDate) {
+      state.endDate = addDays(state.startDate, 0);
+      document.getElementById('end-date').value = state.endDate;
+    }
+    document.getElementById('end-date').min = state.startDate;
+    updateDaysBadge();
+    saveState();
+  });
+  document.getElementById('end-date').addEventListener('change', e => {
+    state.endDate = e.target.value;
+    updateDaysBadge();
+    saveState();
   });
 
+  // Generate
   document.getElementById('generate-btn').addEventListener('click', generatePPTX);
 
+  // Close dropdown on outside click
   document.addEventListener('click', e => {
     if (!e.target.closest('#search-area')) hideDropdown();
   });
