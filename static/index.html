@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>天気予報 PPTX 生成</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>天気予報 PPTX 生成</h1>
+      <p class="subtitle">地点と日数を設定して、天気予報入りの PowerPoint を生成します。</p>
+    </header>
+
+    <section class="section">
+      <h2>地点設定 <span class="hint">（最大5地点）</span></h2>
+
+      <div id="search-area">
+        <div class="search-row">
+          <input type="text" id="search-input" placeholder="都市名を入力（例: 東京、大阪、Sapporo）" autocomplete="off">
+          <button id="search-btn">検索</button>
+        </div>
+        <ul id="search-dropdown" class="dropdown" style="display:none"></ul>
+      </div>
+
+      <div id="location-list" class="location-list"></div>
+
+      <button id="add-location-btn" class="secondary-btn">＋ 検索欄をクリア</button>
+    </section>
+
+    <section class="section">
+      <h2>予報日数</h2>
+      <div class="days-row">
+        <label>
+          <input type="radio" name="days" value="7"> 7日
+        </label>
+        <label>
+          <input type="radio" name="days" value="10"> 10日
+        </label>
+        <label>
+          <input type="radio" name="days" value="14" checked> 14日（デフォルト）
+        </label>
+        <label>
+          <input type="radio" name="days" value="16"> 16日
+        </label>
+      </div>
+    </section>
+
+    <section class="section generate-section">
+      <button id="generate-btn" class="primary-btn">PPTX を生成してダウンロード</button>
+      <div id="status-msg" class="status-msg" style="display:none"></div>
+    </section>
+
+    <footer>
+      <p>データ出典: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0)</p>
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
