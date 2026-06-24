@@ -125,18 +125,62 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 }
 .location-chip .remove-btn:hover { background: #ffeaea; }
 
-/* Days selector */
-.days-row {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-.days-row label {
+/* Date range picker */
+.date-range-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  cursor: pointer;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.date-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.date-input-group label {
+  font-size: 0.8rem;
+  color: #666;
+  font-weight: 600;
+}
+
+.date-input-group input[type="date"] {
+  padding: 8px 10px;
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
   font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: inherit;
+}
+
+.date-input-group input[type="date"]:focus {
+  border-color: #1a56db;
+}
+
+.date-sep {
+  font-size: 1.1rem;
+  color: #888;
+  margin-top: 20px;
+}
+
+.days-badge {
+  display: inline-block;
+  background: #e0e9ff;
+  color: #1a3d7a;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 20px;
+  white-space: nowrap;
+}
+
+.date-error {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: #c00;
 }
 
 /* Generate */
